@@ -1,1 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Porcentagem — D16</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
 
+<div class="folha">
+
+  <header class="cabecalho">
+    <span class="selo">Recomposição de aprendizagem · D16</span>
+    <h1>Simulador de porcentagem</h1>
+    <p>Mova o controle e mude o valor: a grade, o gráfico e os números se atualizam ao vivo. É a mesma ideia por trás de qualquer dashboard interativo que vocês vão construir em Desenvolvimento Web — só que aqui o dado é porcentagem.</p>
+  </header>
+
+  <div class="controles">
+    <div class="campo">
+      <label>Porcentagem <span class="valor-atual" id="rotulo-percentual">37%</span></label>
+      <input type="range" id="slider-percentual" min="0" max="100" value="37" step="1">
+    </div>
+
+    <div class="campo">
+      <label>Valor base</label>
+      <input type="number" id="valor-base" value="200" min="0" step="1">
+    </div>
+
+    <div class="campo">
+      <label>Operação sobre o valor base</label>
+      <div class="alternar">
+        <button id="botao-desconto" class="ativo">Desconto</button>
+        <button id="botao-acrescimo">Acréscimo</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="painel">
+    <div class="cartao-viz">
+      <h3>Parte de um todo (100 quadrados = 100%)</h3>
+      <div class="grade100" id="grade"></div>
+      <div class="leitura-fracao">
+        <div><span class="numero" id="leitura-fracao">37/100</span><span class="rotulo">fração</span></div>
+        <div><span class="numero" id="leitura-decimal">0,37</span><span class="rotulo">decimal</span></div>
+        <div><span class="numero" id="leitura-percentual">37%</span><span class="rotulo">porcentagem</span></div>
+      </div>
+    </div>
+
+    <div class="cartao-viz">
+      <h3>Valor original × valor final</h3>
+      <div class="barras">
+        <div class="barra-grupo">
+          <div class="barra-valor" id="rotulo-original">R$ 200,00</div>
+          <div class="barra original" id="barra-original" style="height: 160px;"></div>
+          <div class="barra-rotulo">Original</div>
+        </div>
+        <div class="barra-grupo">
+          <div class="barra-valor" id="rotulo-final">R$ 126,00</div>
+          <div class="barra final" id="barra-final" style="height: 100px;"></div>
+          <div class="barra-rotulo" id="rotulo-operacao">Com desconto</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="resumo" id="resumo">
+    37% de <strong>R$ 200,00</strong> é <strong>R$ 74,00</strong>. Como é um desconto, o valor final fica em <strong>R$ 126,00</strong>.
+  </div>
+
+  <footer>
+    Descritor D16 — Resolver problema que envolva porcentagem. A mesma lógica de "ouvir o input e redesenhar a tela" que atualiza este simulador é a lógica de eventos que vocês usam em JavaScript.
+  </footer>
+
+</div>
+
+<script>
+  const slider = document.getElementById('slider-percentual');
+  const valorBaseInput = document.getElementById('valor-base');
+  const botaoDesconto = document.getElementById('botao-desconto');
+  const botaoAcrescimo = document.getElementById('botao-acrescimo');
+
+  const grade = document.getElementById('grade');
+  const rotuloPercentual = document.getElementById('rotulo-percentual');
+  const leituraFracao = document.getElementById('leitura-fracao');
+  const leituraDecimal = document.getElementById('leitura-decimal');
+  const leituraPercentual = document.getElementById('leitura-percentual');
+
+  const rotuloOriginal = document.getElementById('rotulo-original');
+  const rotuloFinal = document.getElementById('rotulo-final');
+  const barraOriginal = document.getElementById('barra-original');
+  const barraFinal = document.getElementById('barra-final');
+  const rotuloOperacao = document.getElementById('rotulo-operacao');
+  const resumo = document.getElementById('resumo');
+
+  let operacao = 'desconto';
+
+  // monta a grade de 100 quadrados uma única vez
+  for (let i = 0; i < 100; i++) {
+    const quadrado = document.createElement('div');
+    quadrado.className = 'quadrado';
+    grade.appendChild(quadrado);
+  }
+  const quadrados = grade.querySelectorAll('.quadrado');
+
+  function mdc(a, b) {
+    return b === 0 ? a : mdc(b, a % b);
+  }
+
+  function fracaoSimplificada(percentual) {
+    if (percentual === 0) return '0/1';
+    const divisor = mdc(percentual, 100);
+    return `${percentual / divisor}/${100 / divisor}`;
+  }
+
+  function formataReal(valor) {
+    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  function atualiza() {
+    const percentual = parseInt(slider.value, 10);
+    const valorBase = parseFloat(valorBaseInput.value) || 0;
+    const parte = (percentual / 100) * valorBase;
+    const valorFinal = operacao === 'desconto' ? valorBase - parte : valorBase + parte;
+
+    // grade de 100
+    quadrados.forEach((quadrado, indice) => {
+      quadrado.classList.toggle('preenchido', indice < percentual);
+    });
+
+    // leituras
+    rotuloPercentual.textContent = `${percentual}%`;
+    leituraFracao.textContent = fracaoSimplificada(percentual);
+    leituraDecimal.textContent = (percentual / 100).toFixed(2).replace('.', ',');
+    leituraPercentual.textContent = `${percentual}%`;
+
+    // barras — escala para caber em 200px de altura, com folga se acréscimo passar de 100%
+    const alturaMaxima = 200;
+    const referencia = Math.max(valorBase, valorFinal, 1) * 1.15;
+    const alturaOriginal = (valorBase / referencia) * alturaMaxima;
+    const alturaFinal = (valorFinal / referencia) * alturaMaxima;
+
+    barraOriginal.style.height = `${alturaOriginal}px`;
+    barraFinal.style.height = `${alturaFinal}px`;
+    rotuloOriginal.textContent = formataReal(valorBase);
+    rotuloFinal.textContent = formataReal(valorFinal);
+    rotuloOperacao.textContent = operacao === 'desconto' ? 'Com desconto' : 'Com acréscimo';
+
+    // resumo
+    const verbo = operacao === 'desconto' ? 'desconto' : 'acréscimo';
+    resumo.innerHTML = `${percentual}% de <strong>${formataReal(valorBase)}</strong> é <strong>${formataReal(parte)}</strong>. Como é um ${verbo}, o valor final fica em <strong>${formataReal(valorFinal)}</strong>.`;
+  }
+
+  slider.addEventListener('input', atualiza);
+  valorBaseInput.addEventListener('input', atualiza);
+
+  botaoDesconto.addEventListener('click', () => {
+    operacao = 'desconto';
+    botaoDesconto.classList.add('ativo');
+    botaoAcrescimo.classList.remove('ativo');
+    atualiza();
+  });
+
+  botaoAcrescimo.addEventListener('click', () => {
+    operacao = 'acrescimo';
+    botaoAcrescimo.classList.add('ativo');
+    botaoDesconto.classList.remove('ativo');
+    atualiza();
+  });
+
+  atualiza();
+</script>
+
+</body>
+</html>
